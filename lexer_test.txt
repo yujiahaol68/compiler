@@ -1,0 +1,34 @@
+abc = 1
+for i:=0;i<=5;i=i+1 {}
+var ab = .334
+double abc[4] = {123.456, 0.432, 4.23, 45}
+for k != 0 { break }
+if a < b {
+   c = (a+b) * c / d;
+} elif c >= d && ( e > f || g < f  || a != b) {
+   aa := !e + f
+   # if a != b { ret 0 }
+} else {
+   c = (e | f) - g # comment 2
+   d = (e & f)
+}
+const string a = "bbbccc"
+func main() int { # comment1
+    a := struct { int count, double val }
+    a.count = 1
+    a.double = 3.14159
+    ret 0
+}
+bool some = false;
+if some == true { a.b() }
+switch(status) {
+    case 'a':
+        break
+    case 'b':
+        continue
+    case 'c':
+
+    default:
+        break
+}
+
