@@ -3,6 +3,9 @@
 
 typedef enum {
     SYNTAX_ERR,
+    LACK_OF_OP,
+    TOO_MUCH_OPS,
+    LACK_OF_PARENT,
     UNKNOWN_ERR,
     SYMBOL_UNKNOWN,
 } errno;

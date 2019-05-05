@@ -2,6 +2,7 @@
 #include "../header/lexer.h"
 #include "../header/global.h"
 #include "assert.h"
+#include "../header/parser.h"
 #include <string.h>
 
 int g_line_num;
@@ -17,7 +18,6 @@ void parse_line(char *buf) {
         printf("Kind .. %d, str .. %s\n", tk.kind, tk.str);
 
         memset(tk.str, '\0', sizeof(tk.str));
-        //assert(tk.kind == IDENT_TOKEN);
     }
 }
 
@@ -25,8 +25,7 @@ void init() {
     g_line_num=0;
 }
 
-int main() {
-    printf("%d", EMPTY_SYM);
+int Test_Lexer_main() {
     init();
     lexer_init();
     char buf[1024];
@@ -34,5 +33,17 @@ int main() {
         ++g_line_num;
         parse_line(buf);
     }
+    return 0;
+}
+
+int main() {
+    g_line_num = 1;
+    lexer_init();
+    char buf[1024];
+    while(fgets(buf, 1024, stdin) != NULL) {
+        reset_line(buf);
+        parse();
+    }
+    printf("Grammar analysis finish !");
     return 0;
 }

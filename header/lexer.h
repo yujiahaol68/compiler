@@ -3,6 +3,7 @@
 
 #define MAX_TOKEN_SIZE 100
 #define N_KEYWORD 20
+#define TRUE 1
 
 char word[N_KEYWORD][MAX_TOKEN_SIZE+1];
 
@@ -10,6 +11,7 @@ typedef enum {
     BAD_TOKEN,      // UNFINISH
     NUL_TOKEN,      // UNKNOWN
     NUMBER_TOKEN,   // 123 , 123.456
+    STR_TOKEN,      // "abc" (abc as string value)
     IDENT_TOKEN,    // abc123
     ADD_OP_TOKEN,   // +
     SUB_OP_TOKEN,   // -
@@ -20,7 +22,9 @@ typedef enum {
     BIT_OR_OP_TOKEN,  // |
     NOT_OP_TOKEN,   // !
     END_LINE_TOKEN, // \n
-    BECOMES_TOKEN,  // :=, =
+    BECOMES_TOKEN,  // :=
+    EQL_TOKEN,      // =
+
     // 注释 COMMENT_TOKEN #
     // 界符
     SEMICOLON_TOKEN,        // ;
@@ -33,8 +37,8 @@ typedef enum {
     DOT_TOKEN,              // .
     LBRACKET_TOKEN,         // [
     RBRACKET_TOKEN,         // ]
-    SINGLE_QUATE_TOKEN,     // '
-    DOUBLE_QUATE_TOKEN,     // "
+    SINGLE_QUOTE_TOKEN,     // '
+    DOUBLE_QUOTE_TOKEN,     // "
 
     // 关系运算符
     EQ_OP_TOKEN,      // ==
@@ -46,7 +50,7 @@ typedef enum {
     AND_OP_TOKEN,     // &&
     OR_OP_TOKEN,      // ||
 
-    EMPTY_SYM,       // 仅用于相对定位保留字 34
+    EMPTY_SYM,       // 仅用于相对定位保留字 36
 
     // 保留字
     T_BOOL,           // bool -- T
@@ -72,6 +76,8 @@ typedef enum {
 
 } TokenKind;
 
+char token_literal[EMPTY_SYM][MAX_TOKEN_SIZE+1];
+
 typedef struct {
     TokenKind kind;
     double value;
@@ -81,6 +87,9 @@ typedef struct {
 void lexer_init();
 void reset_line(char *line);
 void get_token(Token *tk);
+int get_line_pos();
 int find_word(char *str);
+char* t_to_string(TokenKind k);
+int IsEOF();
 
 #endif

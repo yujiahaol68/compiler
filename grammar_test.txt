@@ -1,0 +1,8 @@
+const b int = 7 * 2 - 3
+var a int = (3+1) * 15 / 3
+var ab int = 3 3
+const a = ( 3 + 4
+a := 3) + 4
+a = 10 + / 5
+c = +++5
+var b int = 3+4*(5+7)

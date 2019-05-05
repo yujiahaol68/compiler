@@ -1,6 +1,7 @@
 abc = 1
 for i:=0;i<=5;i=i+1 {}
 var ab = .334
+var str = "abc 123 . 456";
 double abc[4] = {123.456, 0.432, 4.23, 45}
 for k != 0 { break }
 if a < b {

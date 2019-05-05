@@ -10,6 +10,16 @@ void print_err(errno n, const char* str) {
             break;
         case UNKNOWN_ERR:
             msg = "unknown error\n";
+            break;
+        case LACK_OF_OP:
+            msg = "syntax error: lack of OPs\n";
+            break;
+        case LACK_OF_PARENT:
+            msg = "syntax error: lack of parenthesis\n";
+            break;
+        case TOO_MUCH_OPS:
+            msg = "syntax error: too much OPs\n";
+            break;
         default:
             break;
     }

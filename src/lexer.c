@@ -7,16 +7,23 @@
 #include "../header/global.h"
 #include "string.h"
 
+int g_line_err;
 int g_line_num;
 
 static char *st_line;
 static int st_line_pos;
+static int end_of_file;
+static int in_str;
 
 typedef enum {
     INITIAL_STATUS,
     IN_INT_PART_STATUS,
-    IN_FRAC_PART_STATUS
+    IN_FRAC_PART_STATUS,
 } LexerStatus;
+
+int get_line_pos() {
+    return st_line_pos;
+}
 
 void get_token(Token* tk) {
     LexerStatus status = INITIAL_STATUS;
@@ -75,6 +82,20 @@ void get_token(Token* tk) {
                 exit(1);
             default:
                 break;
+        }
+
+        if (in_str == 1) {
+            sscanf(&st_line[st_line_pos], "%[^\"]", tk->str);
+            tk->kind = STR_TOKEN;
+            int n_len = strlen(tk->str);
+            st_line_pos += n_len;
+            if (st_line[st_line_pos] != '"') {
+                sprintf(msg, "In Line: %d\nNot a valid string, lack of quote mark", g_line_num);
+                print_err(SYNTAX_ERR, msg);
+                exit(1);
+            }
+            in_str = 2;
+            return;
         }
 
 
@@ -198,7 +219,7 @@ void get_token(Token* tk) {
                     st_line_pos+=2;
                     return;
                 }
-                tk->kind = BECOMES_TOKEN; // := 和 = 都属于同种
+                tk->kind = EQL_TOKEN; // =
                 break;
             case '!':
                 // 条件 != 或非运算 !
@@ -234,9 +255,15 @@ void get_token(Token* tk) {
                 break;
             // 界符
             case '\'':
-                tk->kind = SINGLE_QUATE_TOKEN;break;
+                tk->kind = SINGLE_QUOTE_TOKEN;break;
             case '"':
-                tk->kind = DOUBLE_QUATE_TOKEN;break;
+                tk->kind = DOUBLE_QUOTE_TOKEN;
+                if (in_str == 0) {
+                    in_str = 1;
+                } else if (in_str == 2) {
+                    in_str = 0;
+                }
+                break;
             case ';':
                 tk->kind = SEMICOLON_TOKEN;break;
             case ',':
@@ -268,11 +295,14 @@ void get_token(Token* tk) {
     }
     // out of line
     tk->kind = END_LINE_TOKEN;
+    end_of_file = TRUE;
 }
 
 void reset_line(char *line) {
     st_line = line;
     st_line_pos = 0;
+    end_of_file = 0;
+    in_str = 0; // 假定字符串在本行没有被截断
 }
 
 void lexer_init() {
@@ -296,6 +326,43 @@ void lexer_init() {
     strcpy(&word[17][0], "switch");
     strcpy(&word[18][0], "true");
     strcpy(&word[19][0], "var");
+
+    strcpy(&token_literal[0][0], "unfinished");
+    strcpy(&token_literal[1][0], "unknown");
+    strcpy(&token_literal[2][0], "number");
+    strcpy(&token_literal[3][0], "string");
+    strcpy(&token_literal[4][0], "identifier");
+    strcpy(&token_literal[5][0], "+");
+    strcpy(&token_literal[6][0], "-");
+    strcpy(&token_literal[7][0], "*");
+    strcpy(&token_literal[8][0], "/");
+    strcpy(&token_literal[9][0], "%%");
+    strcpy(&token_literal[10][0], "&");
+    strcpy(&token_literal[11][0], "|");
+    strcpy(&token_literal[12][0], "!");
+    strcpy(&token_literal[13][0], "\\n");
+    strcpy(&token_literal[14][0], ":=");
+    strcpy(&token_literal[15][0], "=");
+    strcpy(&token_literal[16][0], ";");
+    strcpy(&token_literal[17][0], ":");
+    strcpy(&token_literal[18][0], ",");
+    strcpy(&token_literal[19][0], "(");
+    strcpy(&token_literal[20][0], ")");
+    strcpy(&token_literal[21][0], "{");
+    strcpy(&token_literal[22][0], "}");
+    strcpy(&token_literal[23][0], ".");
+    strcpy(&token_literal[24][0], "[");
+    strcpy(&token_literal[25][0], "]");
+    strcpy(&token_literal[26][0], "\'");
+    strcpy(&token_literal[27][0], "\"");
+    strcpy(&token_literal[28][0], "==");
+    strcpy(&token_literal[29][0], "!=");
+    strcpy(&token_literal[30][0], "<");
+    strcpy(&token_literal[31][0], "<=");
+    strcpy(&token_literal[32][0], ">");
+    strcpy(&token_literal[33][0], ">=");
+    strcpy(&token_literal[34][0], "&&");
+    strcpy(&token_literal[35][0], "||");
 }
 
 // 返回相对空保留字的偏移量，没找到返回 -1
@@ -318,4 +385,16 @@ int find_word(char *str) {
 //        if (strcmp(str, word[i])==0) return i+1;
 //    }
     return -1;
+}
+
+char* t_to_string(TokenKind k) {
+    if (k > EMPTY_SYM) {
+        k = k-EMPTY_SYM-1;
+        return word[k];
+    }
+    return token_literal[k];
+}
+
+int IsEOF() {
+    return end_of_file;
 }
