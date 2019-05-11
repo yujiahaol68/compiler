@@ -5,8 +5,10 @@
 #include "../header/parser.h"
 #include "../header/logger.h"
 #include "../header/global.h"
+#include "../header/gen.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void print_line_info() {
     char msg[15];
@@ -187,15 +189,20 @@ double parse_term() {
 }
 
 double parse_expr_tail(double lval) {
+    // +T
     if (is_match(ADD_OP_TOKEN)) {
         get_next_token();
         double value = lval + parse_term();
         return parse_term_tail(value);
-    } else if (is_match(SUB_OP_TOKEN)) {
+    }
+    // -T
+    else if (is_match(SUB_OP_TOKEN)) {
         get_next_token();
         double value = lval - parse_term();
         return parse_term_tail(value);
-    } else if (is_match(END_LINE_TOKEN)) {
+    }
+    // END
+    else if (is_match(END_LINE_TOKEN)) {
         return lval;
     }
     g_line_err = 1;
@@ -204,15 +211,20 @@ double parse_expr_tail(double lval) {
 }
 
 double parse_term_tail(double lval) {
+    // *F
     if (is_match(MUL_OP_TOKEN)) {
         get_next_token();
         double val = lval * parse_factor();
         return parse_term_tail(val);
-    } else if (is_match(DIV_OP_TOKEN)) {
+    }
+    // /F
+    else if (is_match(DIV_OP_TOKEN)) {
         get_next_token();
         double val = lval / parse_factor();
         return parse_term_tail(val);
-    } else {
+    }
+    // END
+    else {
         return lval;
     }
 }
@@ -220,7 +232,7 @@ double parse_term_tail(double lval) {
 double parse_factor() {
     //print_tk();
     double val = 0;
-    // (expr)
+    // (E)
     if (is_match(LPAREN_TOKEN)) {
         get_next_token();
         val = parse_expr();
@@ -249,4 +261,89 @@ double parse_factor() {
         print_line_info();
     }
     return val;
+}
+
+struct Element get_Elem(Token t) {
+    struct Element e;
+    e.k = t.kind;
+    // 常数
+    if (t.kind == NUMBER_TOKEN) {
+        e.t = NUMBER_TYPE;
+        e.number = t.value;
+    }
+    // 字符串
+    else if (t.kind == STR_TOKEN) {
+        e.t = STRING_TYPE;
+    }
+    // 变量
+    else if (t.kind == IDENT_TOKEN) {
+        // TODO: 查符号表得到变量的类型和值
+    }
+    // 布尔值
+    else if (t.kind == TRUE_VAL) {
+        e.t = BOOL_TYPE;
+        e.number = 1;
+    } else if (t.kind == FALSE_VAL) {
+        e.t = BOOL_TYPE;
+        e.number = 0;
+    }
+    strcpy(e.name, t.str);
+    return e;
+}
+
+void genByElement(TokenKind k, struct Element* first, struct Element* second) {
+    if (first->t != second->t) {
+        g_line_err = 1;
+        print_err(UNMATCH_TYPES, NULL);
+        print_line_info();
+        return;
+    }
+
+    // 生成赋值代码
+    if (k == BECOMES_TOKEN) {
+        genWithoutTmp(t_to_string(k), first->name, second->name);
+        return;
+    }
+
+    if (first->t == second->t == NUMBER_TYPE) {
+        // 都是常量
+        if (first->k == NUMBER_TOKEN && second->k == NUMBER_TOKEN) {
+            switch (k) {
+                case ADD_OP_TOKEN:
+                    first->number += second->number;
+                    break;
+                case SUB_OP_TOKEN:
+                    first->number -= second->number;
+                    break;
+                case MUL_OP_TOKEN:
+                    first->number *= second->number;
+                    break;
+                case DIV_OP_TOKEN:
+                    first->number /= second->number;
+            }
+        }
+        // 其中任意一个是变量
+        else {
+            // 左操作数成为新的临时变量
+            char* op = t_to_string(k);
+            char* tmpName = genCode(op, first->name, second->name);
+            memset(first->name, '\0', sizeof(first->name));
+            strcpy(first->name, tmpName);
+            first->k = IDENT_TOKEN;
+        }
+    }
+    else if (first->t == second->t == STRING_TYPE) {
+        if (first->k == STR_TOKEN && second->k == STR_TOKEN) {
+            // 直接合并字符串
+            if (strlen(first->name)+strlen(second->name) < 101) {
+                strcat(first->name, second->name);
+                return;
+            }
+        }
+        // 其中一个是变量或生成代码合并字符串
+        char* tmpName = genCode("++", first->name, second->name);
+        memset(first->name, '\0', sizeof(first->name));
+        strcpy(first->name, tmpName);
+        first->k = IDENT_TOKEN;
+    }
 }

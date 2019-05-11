@@ -3,6 +3,7 @@
 #include "../header/global.h"
 #include "assert.h"
 #include "../header/parser.h"
+#include "../header/hashtable.h"
 #include <string.h>
 
 int g_line_num;
@@ -39,11 +40,15 @@ int Test_Lexer_main() {
 int main() {
     g_line_num = 1;
     lexer_init();
+    init_sym_table();
+
     char buf[1024];
     while(fgets(buf, 1024, stdin) != NULL) {
         reset_line(buf);
         parse();
     }
+
     printf("Grammar analysis finish !");
+    destroy_sym_table();
     return 0;
 }

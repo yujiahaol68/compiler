@@ -6,6 +6,7 @@ typedef enum {
     LACK_OF_OP,
     TOO_MUCH_OPS,
     LACK_OF_PARENT,
+    UNMATCH_TYPES,
     UNKNOWN_ERR,
     SYMBOL_UNKNOWN,
 } errno;

@@ -10,4 +10,4 @@ add_executable(compiler
         header/lexer.h
         src/logger.c
         header/logger.h
-        src/main.c src/parser.c header/parser.h)
+        src/main.c src/parser.c header/parser.h src/gen.c header/gen.h src/hashtable.c header/hashtable.h)
