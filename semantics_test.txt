@@ -1,0 +1,10 @@
+const a int = 3+4-3
+const b int = (a + 5) * 5
+var c int = b - 6 + 3
+var d int = (c + 10) - 3
+var e int = 3*4
+var b int = 1
+e = (c+d)/a-b
+a = 15
+c = abc + d
+c = d - e + c

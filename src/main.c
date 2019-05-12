@@ -48,7 +48,7 @@ int main() {
         parse();
     }
 
-    printf("Grammar analysis finish !");
+    printf("Finish !");
     destroy_sym_table();
     return 0;
 }

@@ -21,7 +21,7 @@ void print_err(errno n, const char* str) {
             msg = "syntax error: too much OPs\n";
             break;
         case UNMATCH_TYPES:
-            msg = "syntax error: found unmatched type when generate code";
+            msg = "syntax error: found unmatched type when generate code\n";
             break;
         default:
             break;

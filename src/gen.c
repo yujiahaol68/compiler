@@ -18,10 +18,10 @@ void new_Tmp_var() {
 
 char* genCode(char* op, char* left, char* right) {
     new_Tmp_var();
-    printf("%d (%s, %s, %s, %s)", genLineNum++, op, left, right, tmpBuf);
+    printf("%d (%s, %s, %s, %s)\n", genLineNum++, op, left, right, tmpBuf);
     return tmpBuf;
 }
 
 char* genWithoutTmp(char* op, char* left, char* right) {
-    printf("%d (%s, %s, %s)", genLineNum++, op, left, right);
+    printf("%d (%s, %s, %s)\n", genLineNum++, op, left, right);
 }

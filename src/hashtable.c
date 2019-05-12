@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "../header/hashtable.h"
 
 /*
@@ -258,7 +259,17 @@ void destroy_sym_table() {
     ht_destroy(ht);
 }
 
-ht_err symtable_Reg_var(char* name, DataType t, void* val) {
+void print_table_key() {
+    printf("Listing keys\n");
+    char* str[ht->e_num];
+    unsigned int i;
+    ht_list_keys(ht, str, ht->e_num);
+    for(i = 0; i < ht->e_num; i++)
+        printf("%s,", str[i]);
+    printf("\n");
+}
+
+ht_err symtable_reg_Var(char* name, DataType t, void* val, TokenKind k) {
     struct Sym * s = malloc (sizeof (struct Sym));
     double* n;
     char* c;
@@ -278,6 +289,7 @@ ht_err symtable_Reg_var(char* name, DataType t, void* val) {
             break;
     }
     s->t = t;
+    s->kind = k;
     struct Sym* ex = (struct Sym*)ht_put(ht, name, (void*)s);
     if (ex == NULL) return OK;
     else {

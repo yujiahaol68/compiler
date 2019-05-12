@@ -6,6 +6,7 @@
 #include "../header/logger.h"
 #include "../header/global.h"
 #include "../header/gen.h"
+#include "../header/hashtable.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -77,6 +78,7 @@ void parse() {
             return;
         }
 
+        char name[101];
         switch (g_cur_tk.kind) {
             // var a int = 15
             // var b int = 1+2
@@ -85,6 +87,7 @@ void parse() {
                 var_decl();
                 break;
             case IDENT_TOKEN:
+                strcpy(name, g_cur_tk.str);
                 get_next_token();
                 // a := 3.14
                 // b := true
@@ -95,9 +98,7 @@ void parse() {
                 // a = 4
                 // b = 6
                 else if (is_match(EQL_TOKEN)) {
-                    // TODO: look up symbol table
-                    get_next_token();
-                    parse_expr();
+                    var_assign(name);
                 }
                 break;
             case CONST_SYM:
@@ -122,8 +123,49 @@ void parse() {
     }
 }
 
+void var_assign(char* var_name) {
+    get_next_token();
+    struct Element e = parse_expr();
+    if (g_line_err != 1) {
+        struct Sym* s = symtable_get_by_name(var_name);
+        if (s == NULL) {
+            char buf[50];
+            sprintf(buf, "Variable %s undefined\n", var_name);
+            print_err(SYNTAX_ERR, buf);
+            print_line_info();
+            g_line_err=1;
+            return;
+        }
+        else if (s->t != e.t) {
+            g_line_err = 1;
+            print_err(UNMATCH_TYPES, NULL);
+            print_line_info();
+            return;
+        }
+        else if (s->kind == NUMBER_TOKEN) {
+            char buf[50];
+            sprintf(buf, "Can not reassign value to constant %s\n", var_name);
+            print_err(SYNTAX_ERR, buf);
+            print_line_info();
+            g_line_err=1;
+            return;
+        }
+
+        if (e.k == NUMBER_TOKEN) {
+            char c[10];
+            sprintf(c, "%.2lf", e.number);
+            genWithoutTmp(t_to_string(EQL_TOKEN), var_name, c);
+        }
+        else if (e.k == IDENT_TOKEN) {
+            genWithoutTmp(t_to_string(EQL_TOKEN), var_name, e.name);
+        }
+    }
+}
+
 void var_decl() {
     go_match(IDENT_TOKEN);
+    char var_name[101];
+    strcpy(var_name, g_cur_tk.str);
     if (match_type() != NUL_TOKEN) {
         go_match(EQL_TOKEN);
     } else {
@@ -137,14 +179,41 @@ void var_decl() {
 
     // 变量，常数或表达式
     get_next_token();
-    double a = parse_expr();
-    if (g_line_err != 1)
-        printf("VALUE: %lf\n", a);
+    struct Element e = parse_expr();
+    if (g_line_err != 1) {
+        //printf("VALUE: %lf\n", e.number);
+        // 变量
+        ht_err res = symtable_reg_Var(var_name, NUMBER_TYPE, &e.number, IDENT_TOKEN);
+        // 检查重复定义
+        if (res == DUP_KEY) {
+            char buf[50];
+            sprintf(buf, "Variable %s redeclare\n", var_name);
+            print_err(SYNTAX_ERR, buf);
+            print_line_info();
+            g_line_err=1;
+            return;
+        }
+
+        print_table_key();
+
+        if (e.k == NUMBER_TOKEN) {
+            char c[10];
+            sprintf(c, "%.2lf", e.number);
+            genWithoutTmp(t_to_string(BECOMES_TOKEN), var_name, c);
+        }
+        // 表达式中有变量
+        else if (e.k == IDENT_TOKEN) {
+            genWithoutTmp(t_to_string(BECOMES_TOKEN), var_name, e.name);
+        }
+    }
 }
 
 void const_decl() {
     go_match(IDENT_TOKEN);
-    if (match_type() != NUL_TOKEN) {
+    char var_name[101];
+    strcpy(var_name, g_cur_tk.str);
+    TokenKind var_type = match_type();
+    if (var_type != NUL_TOKEN) {
         go_match(EQL_TOKEN);
     } else {
         if (!is_match(BECOMES_TOKEN) && !is_match(EQL_TOKEN)) {
@@ -156,10 +225,37 @@ void const_decl() {
     }
 
     // 常数或表达式
-    get_next_token();
-    double a = parse_expr();
-    if (g_line_err!=1)
-        printf("VALUE: %lf\n", a);
+    if (var_type == T_INT || var_type == T_double) {
+        get_next_token();
+        struct Element e = parse_expr();
+        if (g_line_err!=1) {
+            //printf("VALUE: %lf\n", e.number);
+            if (e.k != NUMBER_TOKEN && e.k != STR_TOKEN) {
+                char buf[50];
+                sprintf(buf, "%s should be constant\n", e.name);
+                print_err(SYNTAX_ERR, buf);
+                print_line_info();
+                g_line_err=1;
+                return;
+            }
+            //DataType t = (var_type == T_INT || var_type == T_double) ? NUMBER_TYPE : STRING_TYPE;
+            ht_err res = symtable_reg_Var(var_name, NUMBER_TYPE, &e.number, NUMBER_TOKEN);
+            // 检查重复定义
+            if (res == DUP_KEY) {
+                char buf[50];
+                sprintf(buf, "Variable %s redeclare\n", e.name);
+                print_err(SYNTAX_ERR, buf);
+                print_line_info();
+                g_line_err=1;
+                return;
+            } else {
+                char c[10];
+                sprintf(c, "%.2lf", e.number);
+                genWithoutTmp(t_to_string(BECOMES_TOKEN), var_name, c);
+                print_table_key();
+            }
+        }
+    }
 }
 
 TokenKind match_type() {
@@ -178,77 +274,73 @@ TokenKind match_type() {
     }
 }
 
-double parse_expr() {
-    double lval = parse_term();
-    return parse_expr_tail(lval);
+struct Element parse_expr() {
+    struct Element first = parse_term();
+    return parse_expr_tail(&first);
 }
 
-double parse_term() {
-    double lval = parse_factor();
-    return parse_term_tail(lval);
+struct Element parse_term() {
+    struct Element first = parse_factor();
+    return parse_term_tail(&first);
 }
 
-double parse_expr_tail(double lval) {
-    // +T
-    if (is_match(ADD_OP_TOKEN)) {
+struct Element parse_expr_tail(struct Element* first) {
+    struct Element second;
+    // +T, -T
+    if (is_match(ADD_OP_TOKEN) || is_match(SUB_OP_TOKEN)) {
+        TokenKind op = g_cur_tk.kind;
         get_next_token();
-        double value = lval + parse_term();
-        return parse_term_tail(value);
-    }
-    // -T
-    else if (is_match(SUB_OP_TOKEN)) {
-        get_next_token();
-        double value = lval - parse_term();
-        return parse_term_tail(value);
+        second = parse_term();
+        genByElement(op, first, &second);
+        return parse_expr_tail(first);
     }
     // END
-    else if (is_match(END_LINE_TOKEN)) {
-        return lval;
-    }
-    g_line_err = 1;
-    print_err(LACK_OF_OP, NULL);
-    print_line_info();
+    //else if (is_match(END_LINE_TOKEN)) {
+    //    return *first;
+    //}
+    //g_line_err = 1;
+    //print_err(LACK_OF_OP, NULL);
+    //print_line_info();
+    return *first;
 }
 
-double parse_term_tail(double lval) {
-    // *F
-    if (is_match(MUL_OP_TOKEN)) {
+struct Element parse_term_tail(struct Element* first) {
+    // *F, /F
+    if (is_match(MUL_OP_TOKEN) || is_match(DIV_OP_TOKEN)) {
+        TokenKind op = g_cur_tk.kind;
         get_next_token();
-        double val = lval * parse_factor();
-        return parse_term_tail(val);
-    }
-    // /F
-    else if (is_match(DIV_OP_TOKEN)) {
-        get_next_token();
-        double val = lval / parse_factor();
-        return parse_term_tail(val);
+        struct Element second = parse_factor();
+        genByElement(op, first, &second);
+        return parse_term_tail(first);
     }
     // END
     else {
-        return lval;
+        return *first;
     }
 }
 
-double parse_factor() {
+struct Element parse_factor() {
     //print_tk();
-    double val = 0;
+    struct Element e;
     // (E)
     if (is_match(LPAREN_TOKEN)) {
         get_next_token();
-        val = parse_expr();
+        e = parse_expr();
         must_match(RPAREN_TOKEN);
         get_next_token();
     }
     // 常数
     else if (is_match(NUMBER_TOKEN)) {
-        val = g_cur_tk.value;
+        e = get_Elem(g_cur_tk);
         get_next_token();
-        return val;
+        return e;
     }
     // 变量
     // TODO: look up in symbol table
     else if (is_match(IDENT_TOKEN)) {
-
+        e = get_Elem(g_cur_tk);
+        get_next_token();
+        return e;
     }
     else if (is_match(RPAREN_TOKEN)) {
         g_line_err = 1;
@@ -260,7 +352,7 @@ double parse_factor() {
         print_err(TOO_MUCH_OPS, NULL);
         print_line_info();
     }
-    return val;
+    return e;
 }
 
 struct Element get_Elem(Token t) {
@@ -278,6 +370,34 @@ struct Element get_Elem(Token t) {
     // 变量
     else if (t.kind == IDENT_TOKEN) {
         // TODO: 查符号表得到变量的类型和值
+        struct Sym* s = symtable_get_by_name(g_cur_tk.str);
+        //printf("need to find %s\n", g_cur_tk.str);
+        if (s == NULL) {
+            char buf[50];
+            sprintf(buf, "Variable %s undefined\n", g_cur_tk.str);
+            print_err(SYNTAX_ERR, buf);
+            print_line_info();
+            g_line_err=1;
+        }
+        else if (s->t != NUMBER_TYPE) {
+            char buf[100];
+            sprintf(buf, "Expect number, but variable %s is not a number\n", g_cur_tk.str);
+            print_err(SYNTAX_ERR, buf);
+            print_line_info();
+            g_line_err=1;
+        }
+        // 是常量
+        else if (s->kind == NUMBER_TOKEN) {
+            e.t = s->t;
+            e.k = s->kind;
+            double* val = (double*)s->val;
+            e.number = *val;
+        }
+        // 是变量
+        else if (s->kind == IDENT_TOKEN) {
+            e.t = s->t;
+            e.k = s->kind;
+        }
     }
     // 布尔值
     else if (t.kind == TRUE_VAL) {
@@ -293,20 +413,16 @@ struct Element get_Elem(Token t) {
 
 void genByElement(TokenKind k, struct Element* first, struct Element* second) {
     if (first->t != second->t) {
+        //printf("...%d...%d\n", first->t, second->t);
+        //printf("..%s..%s..%s", first->name, t_to_string(k), second->name);
         g_line_err = 1;
         print_err(UNMATCH_TYPES, NULL);
         print_line_info();
         return;
     }
 
-    // 生成赋值代码
-    if (k == BECOMES_TOKEN) {
-        genWithoutTmp(t_to_string(k), first->name, second->name);
-        return;
-    }
-
     if (first->t == second->t == NUMBER_TYPE) {
-        // 都是常量
+        // 都是常数（排除常量）
         if (first->k == NUMBER_TOKEN && second->k == NUMBER_TOKEN) {
             switch (k) {
                 case ADD_OP_TOKEN:
@@ -320,6 +436,10 @@ void genByElement(TokenKind k, struct Element* first, struct Element* second) {
                     break;
                 case DIV_OP_TOKEN:
                     first->number /= second->number;
+                    break;
+                default:
+                    printf("Invalid OP: %s", t_to_string(k));
+                    return;
             }
         }
         // 其中任意一个是变量

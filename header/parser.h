@@ -28,16 +28,18 @@ struct Element {
 struct Element get_Elem(Token t);
 void genByElement(TokenKind k, struct Element* first, struct Element* second);
 
-void const_decl();
-void var_decl();
+void var_assign(char* var_name); // 变量赋值
+void const_decl(); // 常量声明
+void var_decl(); // 变量声明
 void get_next_token();
 
 void parse();
-double parse_expr();
-double parse_expr_tail(double lvalue);
-double parse_term();
-double parse_term_tail(double lvalue);
-double parse_factor();
+
+struct Element parse_expr();
+struct Element parse_expr_tail(struct Element* first);
+struct Element parse_term();
+struct Element parse_term_tail(struct Element* first);
+struct Element parse_factor();
 
 void print_line_info();
 
