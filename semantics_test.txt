@@ -8,3 +8,5 @@ e = (c+d)/a-b
 a = 15
 c = abc + d
 c = d - e + c
+const s string = "abvgvgr"
+c = c + s

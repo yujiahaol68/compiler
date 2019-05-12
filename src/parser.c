@@ -243,7 +243,7 @@ void const_decl() {
             // 检查重复定义
             if (res == DUP_KEY) {
                 char buf[50];
-                sprintf(buf, "Variable %s redeclare\n", e.name);
+                sprintf(buf, "Variable %s redeclare\n", var_name);
                 print_err(SYNTAX_ERR, buf);
                 print_line_info();
                 g_line_err=1;
@@ -252,6 +252,32 @@ void const_decl() {
                 char c[10];
                 sprintf(c, "%.2lf", e.number);
                 genWithoutTmp(t_to_string(BECOMES_TOKEN), var_name, c);
+                print_table_key();
+            }
+        }
+    } else if (var_type == T_STR) {
+        get_next_token();
+        must_match(DOUBLE_QUOTE_TOKEN);
+        get_next_token();
+        must_match(STR_TOKEN);
+
+        char c[101];
+        strcpy(c, g_cur_tk.str);
+
+        get_next_token();
+        must_match(DOUBLE_QUOTE_TOKEN);
+
+        if (g_line_err!=1) {
+            ht_err res = symtable_reg_Var(var_name, STRING_TYPE, c, STR_TOKEN);
+            if (res == DUP_KEY) {
+                char buf[50];
+                sprintf(buf, "Variable %s redeclare\n", var_name);
+                print_err(SYNTAX_ERR, buf);
+                print_line_info();
+                g_line_err=1;
+                return;
+            } else {
+                genWithoutTmp(":", var_name, c);
                 print_table_key();
             }
         }
@@ -412,6 +438,7 @@ struct Element get_Elem(Token t) {
 }
 
 void genByElement(TokenKind k, struct Element* first, struct Element* second) {
+    if (g_line_err == 1) return;
     if (first->t != second->t) {
         //printf("...%d...%d\n", first->t, second->t);
         //printf("..%s..%s..%s", first->name, t_to_string(k), second->name);
