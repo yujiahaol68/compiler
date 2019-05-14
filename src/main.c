@@ -4,6 +4,7 @@
 #include "assert.h"
 #include "../header/parser.h"
 #include "../header/hashtable.h"
+#include "../header/gen.h"
 #include <string.h>
 
 int g_line_num;
@@ -41,6 +42,7 @@ int main() {
     g_line_num = 1;
     lexer_init();
     init_sym_table();
+    gen_init();
 
     char buf[1024];
     while(fgets(buf, 1024, stdin) != NULL) {
@@ -48,7 +50,10 @@ int main() {
         parse();
     }
 
-    printf("Finish !");
+    printf("Finish !\n");
+    printf("Result:\n");
+    print_all_quad();
+    gen_destroy();
     destroy_sym_table();
     return 0;
 }

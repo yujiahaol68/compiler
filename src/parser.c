@@ -53,6 +53,10 @@ int is_cal_ops(TokenKind k) {
     }
 }
 
+int is_condi_ops(TokenKind k) {
+    return k >= EQ_OP_TOKEN && k<= OR_OP_TOKEN;
+}
+
 // { \n ;
 int is_boundary(TokenKind k) {
     switch (k) {
@@ -69,13 +73,14 @@ void print_tk() {
     printf("Kind: %d, Val: %s\n", g_cur_tk.kind, g_cur_tk.str);
 }
 
-void parse() {
+Cause parse() {
     while(1) {
         get_next_token();
+
         if (g_cur_tk.kind == END_LINE_TOKEN) {
             ++g_line_num;
             get_next_token();
-            return;
+            return END_OF_LINE;
         }
 
         char name[101];
@@ -101,9 +106,23 @@ void parse() {
                     var_assign(name);
                 }
                 break;
+            // const a int = 1    
             case CONST_SYM:
                 const_decl();
                 break;
+            // if statement    
+            case IF_SYM:
+                condition_stmt(NULL);
+                break;
+            // for statement ( while like )    
+            case FOR_SYM: {
+                int true_out = getNextCodeLine();
+                condition_stmt(&true_out);
+                break;
+            }
+            case RBRACE_TOKEN:
+                get_next_token();
+                return END_OF_BLOCK;
             default:
                 //print_err(SYNTAX_ERR, " Or not implement yet!");
                 //exit(1);
@@ -118,7 +137,7 @@ void parse() {
             ++g_line_num;
             get_next_token();
             g_line_err = 0;
-            return;
+            return SYNTAX_ERROR;
         }
     }
 }
@@ -362,7 +381,6 @@ struct Element parse_factor() {
         return e;
     }
     // 变量
-    // TODO: look up in symbol table
     else if (is_match(IDENT_TOKEN)) {
         e = get_Elem(g_cur_tk);
         get_next_token();
@@ -492,5 +510,90 @@ void genByElement(TokenKind k, struct Element* first, struct Element* second) {
         memset(first->name, '\0', sizeof(first->name));
         strcpy(first->name, tmpName);
         first->k = IDENT_TOKEN;
+    }
+}
+
+struct Element parse_bool_expr(int* pre_t, int* pre_f) {
+    get_next_token();
+    struct Element l_args = parse_expr();
+    int pre_true = 0;
+    int pre_false = 0;
+    while(g_cur_tk.kind!=LBRACE_TOKEN) {
+        TokenKind condi_op = g_cur_tk.kind;
+        // ==, !=, >, >=, <, <=
+        if (condi_op >= EQ_OP_TOKEN && condi_op <= GTE_OP_TOKEN) {
+            get_next_token();
+            struct Element r_args = parse_expr();
+            if ((l_args.k == IDENT_TOKEN || l_args.k == NUMBER_TOKEN)
+            && (r_args.k == IDENT_TOKEN || l_args.k == NUMBER_TOKEN)) {
+                pre_true = genCondiPlaceHold(t_to_string(condi_op), l_args.name, r_args.name, pre_true);
+                pre_false = gen_goto_line(pre_false, PLACEHOLDER);
+            } else {
+                printf("Invalid boolean expr!!\n");
+            }
+        }
+        // &&
+        else if (condi_op==AND_OP_TOKEN) {
+
+        }
+        // ||
+        else if (condi_op==OR_OP_TOKEN) {
+
+        }
+    }
+
+    *pre_t = pre_true;
+    *pre_f = pre_false;
+    return l_args;
+}
+
+void condition_stmt(const int* true_out) {
+    int pre_true = 0;
+    int pre_false = 0;
+    parse_bool_expr(&pre_true, &pre_false);
+    // {
+    must_match(LBRACE_TOKEN);
+    get_next_token();
+    must_match(END_LINE_TOKEN);
+    ++g_line_num;
+
+    back_patch(pre_true, getNextCodeLine());
+
+    printf("................\n");
+    char buf[1024];
+    while(fgets(buf, 1024, stdin) != NULL) {
+        reset_line(buf);
+        Cause c = parse();
+        if (c == END_OF_BLOCK) break;
+    }
+
+    if (true_out != NULL) {
+        gen_goto_line(*true_out, NORMAL);
+    }
+    // } else {
+    if (g_cur_tk.kind == ELSE_SYM) {
+        // {\n
+        get_next_token();
+        must_match(LBRACE_TOKEN);
+        get_next_token();
+        must_match(END_LINE_TOKEN);
+        ++g_line_num;
+
+        pre_true = gen_goto_line(0, PLACEHOLDER);
+        back_patch(pre_false, getNextCodeLine());
+
+        while(fgets(buf, 1024, stdin) != NULL) {
+            reset_line(buf);
+            Cause c = parse();
+            if (c == END_OF_BLOCK) break;
+        }
+
+        must_match(END_LINE_TOKEN);
+        back_patch(pre_true, getNextCodeLine());
+    }
+    // }\n
+    else if (g_cur_tk.kind == END_LINE_TOKEN) {
+        printf("..........\n");
+        back_patch(pre_false, getNextCodeLine());
     }
 }

@@ -15,6 +15,11 @@ typedef enum {
     BOOL_TYPE,
 } DataType;
 
+typedef enum {
+    END_OF_BLOCK,
+    END_OF_LINE,
+    SYNTAX_ERROR
+} Cause;
 
 struct Element {
     DataType t;
@@ -31,9 +36,10 @@ void genByElement(TokenKind k, struct Element* first, struct Element* second);
 void var_assign(char* var_name); // 变量赋值
 void const_decl(); // 常量声明
 void var_decl(); // 变量声明
+void condition_stmt(const int* true_out);
 void get_next_token();
 
-void parse();
+Cause parse();
 
 struct Element parse_expr();
 struct Element parse_expr_tail(struct Element* first);
@@ -41,12 +47,15 @@ struct Element parse_term();
 struct Element parse_term_tail(struct Element* first);
 struct Element parse_factor();
 
+struct Element parse_bool_expr(int* pre_t, int* pre_f);
+
 void print_line_info();
 
 void must_match(TokenKind k);
 void go_match(TokenKind k);
 int is_cal_ops(TokenKind k);
 int is_boundary(TokenKind k);
+int is_condi_ops(TokenKind k);
 TokenKind match_type();
 
 #endif //COMPILER_PARSER_H
