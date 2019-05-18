@@ -7,6 +7,9 @@ if a+3 > b+5 {
 b = a + b
 if a-1 >= b+2 {
     const d int = 12
+    if d > a+2 {
+        a = a + 1
+    }
     b = b+1
 } else {
     a = a + b * 2
